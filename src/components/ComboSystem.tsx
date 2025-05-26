@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +16,7 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
   const [comboDecayTimer, setComboDecayTimer] = useState<NodeJS.Timeout | null>(null);
   const [maxCombo, setMaxCombo] = useState(0);
   const [lastNotificationCombo, setLastNotificationCombo] = useState(0);
+  const comboRef = useRef(0);
 
   const COMBO_WINDOW = 2000;
   const MAX_COMBO = 50;
@@ -25,31 +26,43 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
     if (gameState.totalClicks > 0 && now - lastClickTime < COMBO_WINDOW) {
       const newCombo = Math.min(combo + 1, MAX_COMBO);
       setCombo(newCombo);
+      comboRef.current = newCombo; // Update ref with the new combo value
       setMaxCombo(prev => Math.max(prev, newCombo));
       
       if (comboDecayTimer) clearTimeout(comboDecayTimer);
       
       const timer = setTimeout(() => {
-        if (combo >= 10 && onNotification) {
+        // Use comboRef.current for the message as 'combo' in closure might be stale
+        if (comboRef.current >= 10 && onNotification) {
           onNotification({
             type: 'info',
             title: 'Combo Broken!',
-            message: `Amazing ${combo}x combo streak ended!`,
+            message: `Amazing ${comboRef.current}x combo streak ended!`, // Use comboRef
             autoClose: 3000
           });
         }
         setCombo(0);
+        comboRef.current = 0; // Update ref when combo is reset by timer
         setLastNotificationCombo(0);
+        onComboBonus(1); // Reset combo bonus when timer fires
       }, COMBO_WINDOW);
       
       setComboDecayTimer(timer);
       
+      // This part correctly sets the multiplier when combo is active
       if (newCombo >= 5) {
         const multiplier = 1 + (newCombo * 0.1);
         onComboBonus(multiplier);
+      } else {
+        // If the new combo is less than 5 (e.g., after a reset and a single click),
+        // ensure the bonus is reset to 1 if it wasn't already.
+        // This case is mostly handled by the timer, but this adds robustness.
+        if (comboRef.current < 5) { // Check ref, as 'combo' might not be updated yet
+             onComboBonus(1);
+        }
       }
       
-      // Throttled milestone notifications
+      // Throttled milestone notifications (no changes here)
       if (onNotification) {
         if (newCombo === 10 && lastNotificationCombo < 10) {
           onNotification({
@@ -78,13 +91,20 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
         }
       }
     }
+    // Removed the 'else if (combo > 0)' block that was here.
     
     setLastClickTime(now);
     
+    // Cleanup function
     return () => {
       if (comboDecayTimer) clearTimeout(comboDecayTimer);
+      // On unmount or if dependencies change causing cleanup:
+      // if a combo was active (multiplier was > 1), reset it.
+      if (comboRef.current >= 5) {
+        onComboBonus(1);
+      }
     };
-  }, [gameState.totalClicks]);
+  }, [gameState.totalClicks, onComboBonus, combo]); // Confirmed dependencies
 
   const getComboColor = () => {
     if (combo >= 25) return 'text-yellow-400 border-yellow-500/50';

@@ -11,6 +11,7 @@ interface GameState {
   activatedArtifacts: string[];
   secretUpgrades: string[];
   multiplier: number;
+  activeComboMultiplier: number;
 }
 
 const initialGameState: GameState = {
@@ -23,7 +24,8 @@ const initialGameState: GameState = {
   artifacts: [],
   activatedArtifacts: [],
   secretUpgrades: [],
-  multiplier: 1
+  multiplier: 1,
+  activeComboMultiplier: 1
 };
 
 export const useGameState = () => {
@@ -45,7 +47,7 @@ export const useGameState = () => {
   const handleClick = useCallback(() => {
     setGameState(prev => ({
       ...prev,
-      incrementPoints: prev.incrementPoints + (prev.clickPower * prev.multiplier),
+      incrementPoints: prev.incrementPoints + (prev.clickPower * prev.multiplier * prev.activeComboMultiplier),
       totalClicks: prev.totalClicks + 1
     }));
   }, []);
@@ -167,7 +169,7 @@ export const useGameState = () => {
   }, []);
 
   const handleComboBonus = useCallback((multiplier: number) => {
-    // Combo bonus is temporary and handled in the combo system
+    setGameState(prev => ({ ...prev, activeComboMultiplier: multiplier }));
   }, []);
 
   const loadGameState = useCallback((newState: Partial<GameState>) => {
