@@ -53,14 +53,8 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
       if (newCombo >= 5) {
         const multiplier = 1 + (newCombo * 0.1);
         onComboBonus(multiplier);
-      } else {
-        // If the new combo is less than 5 (e.g., after a reset and a single click),
-        // ensure the bonus is reset to 1 if it wasn't already.
-        // This case is mostly handled by the timer, but this adds robustness.
-        if (comboRef.current < 5) { // Check ref, as 'combo' might not be updated yet
-             onComboBonus(1);
-        }
       }
+      // Removed the else block that called onComboBonus(1)
       
       // Throttled milestone notifications (no changes here)
       if (onNotification) {
@@ -90,8 +84,22 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
           setLastNotificationCombo(50);
         }
       }
+    } else {
+      // This 'else' block executes if the click was too slow to continue an existing combo,
+      // or if totalClicks was 0 (initial state), etc.
+      if (combo > 0) { // Check current 'combo' state.
+        setCombo(0);
+        comboRef.current = 0; // Keep ref in sync
+        onComboBonus(1);      // Ensure the game state multiplier is reset
+        
+        // If a decay timer was pending for the old combo, clear it.
+        if (comboDecayTimer) {
+          clearTimeout(comboDecayTimer);
+          setComboDecayTimer(null); // Explicitly nullify the timer ID state
+        }
+      }
+      // If combo was already 0, no action needed in this 'else' block regarding combo reset.
     }
-    // Removed the 'else if (combo > 0)' block that was here.
     
     setLastClickTime(now);
     
@@ -104,7 +112,7 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
         onComboBonus(1);
       }
     };
-  }, [gameState.totalClicks, onComboBonus, combo]); // Confirmed dependencies
+  }, [gameState.totalClicks, onComboBonus, onNotification, lastClickTime]); // Updated dependencies
 
   const getComboColor = () => {
     if (combo >= 25) return 'text-yellow-400 border-yellow-500/50';
