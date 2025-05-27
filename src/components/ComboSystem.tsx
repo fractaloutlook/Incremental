@@ -21,98 +21,108 @@ export const ComboSystem = ({ gameState, onComboBonus, onNotification }: ComboSy
   const COMBO_WINDOW = 2000;
   const MAX_COMBO = 50;
 
+  // Click Processing Effect
   useEffect(() => {
     const now = Date.now();
-    if (gameState.totalClicks > 0 && now - lastClickTime < COMBO_WINDOW) {
-      const newCombo = Math.min(combo + 1, MAX_COMBO);
-      setCombo(newCombo);
-      comboRef.current = newCombo; // Update ref with the new combo value
-      setMaxCombo(prev => Math.max(prev, newCombo));
-      
-      if (comboDecayTimer) clearTimeout(comboDecayTimer);
-      
-      const timer = setTimeout(() => {
-        // Use comboRef.current for the message as 'combo' in closure might be stale
-        if (comboRef.current >= 10 && onNotification) {
-          onNotification({
-            type: 'info',
-            title: 'Combo Broken!',
-            message: `Amazing ${comboRef.current}x combo streak ended!`, // Use comboRef
-            autoClose: 3000
-          });
-        }
+
+    if (gameState.totalClicks === 0) {
         setCombo(0);
-        comboRef.current = 0; // Update ref when combo is reset by timer
-        setLastNotificationCombo(0);
-        onComboBonus(1); // Reset combo bonus when timer fires
-      }, COMBO_WINDOW);
-      
-      setComboDecayTimer(timer);
-      
-      // This part correctly sets the multiplier when combo is active
-      if (newCombo >= 5) {
-        const multiplier = 1 + (newCombo * 0.1);
-        onComboBonus(multiplier);
-      }
-      // Removed the else block that called onComboBonus(1)
-      
-      // Throttled milestone notifications (no changes here)
-      if (onNotification) {
-        if (newCombo === 10 && lastNotificationCombo < 10) {
-          onNotification({
-            type: 'success',
-            title: '🔥 Hot Streak!',
-            message: '10x combo achieved!',
-            autoClose: 4000
-          });
-          setLastNotificationCombo(10);
-        } else if (newCombo === 25 && lastNotificationCombo < 25) {
-          onNotification({
-            type: 'success',
-            title: '⚡ Lightning Fast!',
-            message: '25x combo! Incredible!',
-            autoClose: 4000
-          });
-          setLastNotificationCombo(25);
-        } else if (newCombo === 50 && lastNotificationCombo < 50) {
-          onNotification({
-            type: 'achievement',
-            title: '🌟 LEGENDARY!',
-            message: 'MAXIMUM COMBO REACHED!',
-            autoClose: 6000
-          });
-          setLastNotificationCombo(50);
+        comboRef.current = 0;
+        setLastClickTime(0);
+        // Access comboDecayTimer state directly for clearing
+        if (comboDecayTimer) { 
+            clearTimeout(comboDecayTimer);
+            setComboDecayTimer(null);
         }
-      }
-    } else {
-      // This 'else' block executes if the click was too slow to continue an existing combo,
-      // or if totalClicks was 0 (initial state), etc.
-      if (combo > 0) { // Check current 'combo' state.
-        setCombo(0);
-        comboRef.current = 0; // Keep ref in sync
-        onComboBonus(1);      // Ensure the game state multiplier is reset
-        
-        // If a decay timer was pending for the old combo, clear it.
-        if (comboDecayTimer) {
-          clearTimeout(comboDecayTimer);
-          setComboDecayTimer(null); // Explicitly nullify the timer ID state
-        }
-      }
-      // If combo was already 0, no action needed in this 'else' block regarding combo reset.
-    }
-    
-    setLastClickTime(now);
-    
-    // Cleanup function
-    return () => {
-      if (comboDecayTimer) clearTimeout(comboDecayTimer);
-      // On unmount or if dependencies change causing cleanup:
-      // if a combo was active (multiplier was > 1), reset it.
-      if (comboRef.current >= 5) {
         onComboBonus(1);
+    } else if (lastClickTime !== 0 && (now - lastClickTime < COMBO_WINDOW)) {
+        // Fast click
+        const newCombo = Math.min(combo + 1, MAX_COMBO);
+        setCombo(newCombo);
+        comboRef.current = newCombo;
+        setMaxCombo(prev => Math.max(prev, newCombo));
+
+        if (newCombo >= 5) {
+            const multiplier = 1 + (newCombo * 0.1);
+            onComboBonus(multiplier);
+        } else {
+            onComboBonus(1);
+        }
+
+        if (onNotification) {
+            if (newCombo === 10 && lastNotificationCombo < 10) {
+                onNotification({ type: 'success', title: '🔥 Hot Streak!', message: '10x combo achieved!', autoClose: 4000 });
+                setLastNotificationCombo(10);
+            } else if (newCombo === 25 && lastNotificationCombo < 25) {
+                onNotification({ type: 'success', title: '⚡ Lightning Fast!', message: '25x combo! Incredible!', autoClose: 4000 });
+                setLastNotificationCombo(25);
+            } else if (newCombo === 50 && lastNotificationCombo < 50) {
+                onNotification({ type: 'achievement', title: '🌟 LEGENDARY!', message: 'MAXIMUM COMBO REACHED!', autoClose: 6000 });
+                setLastNotificationCombo(50);
+            }
+        }
+    } else {
+        // Slow click or the very first click (lastClickTime === 0)
+        if (combo > 0) { 
+            setCombo(0); 
+            comboRef.current = 0;
+            onComboBonus(1); 
+        }
+        
+        setCombo(1); // Start new combo at 1
+        comboRef.current = 1;
+        setMaxCombo(prev => Math.max(prev, 1));
+        onComboBonus(1); 
+        setLastNotificationCombo(0); 
+    }
+    setLastClickTime(now);
+
+    // This effect should no longer manage the comboDecayTimer directly (setTimeout/clearTimeout for decay).
+    // Its cleanup function should be empty or handle things not related to comboDecayTimer.
+    return () => {}; 
+  }, [gameState.totalClicks, onComboBonus, onNotification]);
+
+  // Combo Decay Timer Effect
+  useEffect(() => {
+      // timerIdToClear captures the current timer ID from state for cleanup, if needed.
+      // However, the primary clearing of old timers happens before setting a new one.
+      // This effect structure ensures one timer per combo > 0 state.
+
+      if (combo > 0) {
+          // If a combo is active, set/reset its decay timer.
+          // Any pre-existing timer for a *previous* combo value would have been
+          // implicitly cleared by its own cleanup when 'combo' changed.
+          // Or, if one was manually cleared, comboDecayTimer state would be null.
+
+          const newTimer = setTimeout(() => {
+              if (comboRef.current >= 10 && onNotification) {
+                  onNotification({
+                      type: 'info',
+                      title: 'Combo Broken!',
+                      message: `Amazing ${comboRef.current}x combo streak ended!`,
+                      autoClose: 3000
+                  });
+              }
+              setCombo(0); 
+              comboRef.current = 0;
+              setLastNotificationCombo(0);
+              onComboBonus(1); 
+          }, COMBO_WINDOW);
+          setComboDecayTimer(newTimer);
+
+          return () => { // Cleanup for this specific timer instance
+              clearTimeout(newTimer);
+          };
+      } else {
+          // Combo is 0. If a timer was active (e.g. from a previous combo value),
+          // its cleanup (return () => { clearTimeout(newTimer); }) should have run.
+          // Explicitly clear here if comboDecayTimer state might still hold an ID.
+          if (comboDecayTimer) {
+              clearTimeout(comboDecayTimer);
+              setComboDecayTimer(null);
+          }
       }
-    };
-  }, [gameState.totalClicks, onComboBonus, onNotification, lastClickTime]); // Updated dependencies
+  }, [combo, onComboBonus, onNotification, COMBO_WINDOW]);
 
   const getComboColor = () => {
     if (combo >= 25) return 'text-yellow-400 border-yellow-500/50';

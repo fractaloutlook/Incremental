@@ -154,7 +154,7 @@ const UpgradeShop: React.FC<UpgradeShopProps> = ({ incrementPoints, onPurchase, 
   };
 
   const upgrades = getUpgrades();
-  const availableUpgrades = upgrades.filter(u => !u.purchased);
+  // const availableUpgrades = upgrades.filter(u => !u.purchased); // Commented out
 
   return (
     <Card className="bg-slate-800 border-slate-700 relative overflow-hidden">
@@ -168,20 +168,20 @@ const UpgradeShop: React.FC<UpgradeShopProps> = ({ incrementPoints, onPurchase, 
           Upgrade Shop
         </CardTitle>
         <div className="text-sm text-slate-400">
-          {availableUpgrades.length} upgrades available
+          {upgrades.filter(u => !u.purchased).length} of {upgrades.length} upgrades remaining
         </div>
       </CardHeader>
       
       <CardContent className="space-y-3 relative z-10">
-        {availableUpgrades.length === 0 ? (
+        {upgrades.filter(u => !u.purchased).length === 0 ? (
           <div className="text-center py-8 text-slate-400">
             <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>All upgrades purchased!</p>
-            <p className="text-xs mt-1">More upgrades unlock as you progress</p>
+            <p>All currently available upgrades purchased!</p>
+            <p className="text-xs mt-1">More may unlock as you progress.</p>
           </div>
         ) : (
-          availableUpgrades.map((upgrade) => (
-            <Card key={upgrade.id} className={`border ${getTypeColor(upgrade.type)} bg-slate-700/50`}>
+          upgrades.map((upgrade) => (
+            <Card key={upgrade.id} className={`border ${getTypeColor(upgrade.type)} ${upgrade.purchased ? 'bg-slate-600/30 opacity-70' : 'bg-slate-700/50'}`}>
               <CardContent className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -207,10 +207,10 @@ const UpgradeShop: React.FC<UpgradeShopProps> = ({ incrementPoints, onPurchase, 
                     <Button
                       size="sm"
                       onClick={() => onPurchase(upgrade.id)}
-                      disabled={incrementPoints < upgrade.cost}
-                      className="text-xs h-7"
+                      disabled={upgrade.purchased || incrementPoints < upgrade.cost}
+                      className={`text-xs h-7 w-20 ${upgrade.purchased ? 'bg-green-700 hover:bg-green-700 cursor-default' : 'bg-blue-600 hover:bg-blue-700'}`}
                     >
-                      Buy
+                      {upgrade.purchased ? 'Purchased' : 'Buy'}
                     </Button>
                   </div>
                 </div>

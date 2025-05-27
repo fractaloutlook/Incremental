@@ -8,6 +8,8 @@ interface GameStatsProps {
   clickPower: number;
   autoIncrementRate: number;
   totalClicks: number;
+  multiplier: number;
+  activeComboMultiplier: number;
 }
 
 const formatNumber = (num: number): string => {
@@ -25,8 +27,13 @@ const GameStats: React.FC<GameStatsProps> = ({
   incrementPoints,
   clickPower,
   autoIncrementRate,
-  totalClicks
+  totalClicks,
+  multiplier,
+  activeComboMultiplier
 }) => {
+  const totalMultiplier = multiplier * activeComboMultiplier;
+  const effectiveClickPower = clickPower * totalMultiplier;
+
   return (
     <div className="space-y-3">
       <Card className="bg-slate-800 border-slate-700">
@@ -54,9 +61,20 @@ const GameStats: React.FC<GameStatsProps> = ({
                 <MousePointer className="w-4 h-4 text-blue-400" />
                 <span className="text-slate-300 text-sm">Click Power</span>
               </div>
-              <Badge variant="secondary" className="bg-blue-900/50 text-blue-300">
-                {formatPrecise(clickPower)}
-              </Badge>
+              <div className="text-right">
+                <span className="text-blue-300 font-semibold">
+                  {formatPrecise(clickPower)}
+                </span>
+                {totalMultiplier > 1 && (
+                  <span className="text-xs text-purple-400 ml-1 mr-1">
+                    (x{totalMultiplier.toFixed(1)})
+                  </span>
+                )}
+                <span className="text-blue-300 font-semibold">
+                  {' → '} 
+                  {formatPrecise(effectiveClickPower)}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
