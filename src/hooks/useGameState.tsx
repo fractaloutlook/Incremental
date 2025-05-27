@@ -60,7 +60,10 @@ export const useGameState = () => {
       'auto_increment_2': 500,
       'multiplier_1': 1000,
       'hidden_power': 2500,
-      'mirror_numbers': 5000
+      'mirror_numbers': 5000,
+      'click_power_3': 2500,
+      'auto_increment_3': 10000,
+      'multiplier_2': 25000,
     };
 
     const cost = upgradeCosts[upgradeId];
@@ -95,6 +98,15 @@ export const useGameState = () => {
           break;
         case 'mirror_numbers':
           newState.autoIncrementRate *= 2;
+          break;
+        case 'click_power_3':
+          newState.clickPower += 25;
+          break;
+        case 'auto_increment_3':
+          newState.autoIncrementRate += 25;
+          break;
+        case 'multiplier_2':
+          newState.multiplier *= 2;
           break;
       }
 

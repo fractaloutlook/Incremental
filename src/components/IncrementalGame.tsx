@@ -114,7 +114,8 @@ const IncrementalGame: React.FC = () => {
                 clickPower={gameState.clickPower}
                 autoIncrementRate={gameState.autoIncrementRate}
                 totalClicks={gameState.totalClicks}
-                showPlaceholders={showPlaceholders}
+                multiplier={gameState.multiplier}
+                activeComboMultiplier={gameState.activeComboMultiplier}
               />
               
               <div className="space-y-4">
